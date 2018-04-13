@@ -1,0 +1,278 @@
+#!/bin/bash
+#set -x
+
+TOOL_NAME="Microsoft Office Installer Cache"
+TOOL_VERSION="1.0"
+
+## Copyright (c) 2018 Microsoft Corp. All rights reserved.
+## Scripts are not supported under any Microsoft standard support program or service. The scripts are provided AS IS without warranty of any kind.
+## Microsoft disclaims all implied warranties including, without limitation, any implied warranties of merchantability or of fitness for a 
+## particular purpose. The entire risk arising out of the use or performance of the scripts and documentation remains with you. In no event shall
+## Microsoft, its authors, or anyone else involved in the creation, production, or delivery of the scripts be liable for any damages whatsoever 
+## (including, without limitation, damages for loss of business profits, business interruption, loss of business information, or other pecuniary 
+## loss) arising out of the use of or inability to use the sample scripts or documentation, even if Microsoft has been advised of the possibility
+## of such damages.
+## Feedback: pbowden@microsoft.com
+
+# External Constants - IT admins should feel free to customize this section to use different web folder paths
+WEBFOLDER_MAU="InstallMAU"
+WEBFOLDER_OFFICE="InstallOffice"
+WEBFOLDER_WORD="InstallWord"
+WEBFOLDER_EXCEL="InstallExcel"
+WEBFOLDER_POWERPOINT="InstallPowerPoint"
+WEBFOLDER_OUTLOOK="InstallOutlook"
+WEBFOLDER_ONENOTE="InstallOneNote"
+WEBFOLDER_ONEDRIVE="InstallOneDrive"
+WEBFOLDER_SKYPEBUSINESS="InstallSkypeBusiness"
+WEBFOLDER_COMPANYPORTAL="InstallCompanyPortal"
+WEBFOLDER_REMOTEDESKTOP="InstallRemoteDesktop"
+WEBFOLDER_FILE="default.html"
+
+# Internal Constants - Should not be customized
+INSTALLER_MAU="https://go.microsoft.com/fwlink/?linkid=830196"
+INSTALLER_OFFICE="https://go.microsoft.com/fwlink/?linkid=525133"
+INSTALLER_WORD="https://go.microsoft.com/fwlink/?linkid=525134"
+INSTALLER_EXCEL="https://go.microsoft.com/fwlink/?linkid=525135"
+INSTALLER_POWERPOINT="https://go.microsoft.com/fwlink/?linkid=525136"
+INSTALLER_OUTLOOK="https://go.microsoft.com/fwlink/?linkid=525137"
+INSTALLER_ONENOTE="https://go.microsoft.com/fwlink/?linkid=820886"
+INSTALLER_ONEDRIVE="https://go.microsoft.com/fwlink/?linkid=823060"
+INSTALLER_SKYPEBUSINESS="https://go.microsoft.com/fwlink/?linkid=831677"
+INSTALLER_COMPANYPORTAL="https://go.microsoft.com/fwlink/?linkid=869655"
+INSTALLER_REMOTEDESKTOP="https://go.microsoft.com/fwlink/?linkid=868963"
+
+# Platform detection - allows this script to run on macOS and *nix variants
+PLATFORM=$(uname -s)
+
+# Shows tool usage and parameters
+ShowUsage() {
+	echo $TOOL_NAME - $TOOL_VERSION
+	echo "Purpose: Downloads Office installer packages from the Office CDN to a shared folder"
+	echo "Usage: InstallerCache --CachePath:<path> [--CheckInterval:<minutes>] [--PurgeOldInstallers]"
+	echo "Example: InstallerCache --CachePath:/Volumes/web --CheckInterval:60"
+	echo "  The <path> needs to be exposed as a web folder, such as http://webserver/folder"
+	echo "  Clients can install packages by navigating to a URL, such as http://webserver/folder/InstallWord"
+	echo
+	exit 0
+}
+
+# Builds an array of all the installers we want to download - IT admins should feel free to remove items they don't care about
+BuildInstallerArray() {
+	APP=()
+	APP+=("$INSTALLER_MAU")
+	APP+=("$INSTALLER_OFFICE")
+	APP+=("$INSTALLER_WORD")
+	APP+=("$INSTALLER_EXCEL")
+	APP+=("$INSTALLER_POWERPOINT")
+	APP+=("$INSTALLER_OUTLOOK")
+	APP+=("$INSTALLER_ONENOTE")
+	APP+=("$INSTALLER_ONEDRIVE")
+	APP+=("$INSTALLER_SKYPEBUSINESS")
+	APP+=("$INSTALLER_COMPANYPORTAL")
+	APP+=("$INSTALLER_REMOTEDESKTOP")
+}
+
+# Performs a reverse look-up from ID to friendly name
+GetAppNameFromID() {
+	case "$1" in
+		$INSTALLER_MAU)				APPNAME="Microsoft AutoUpdate";;
+		$INSTALLER_OFFICE)			APPNAME="Microsoft Office for Mac";;
+		$INSTALLER_WORD)			APPNAME="Microsoft Word for Mac";;
+		$INSTALLER_EXCEL)			APPNAME="Microsoft Excel for Mac";;
+		$INSTALLER_POWERPOINT)		APPNAME="Microsoft PowerPoint for Mac";;
+		$INSTALLER_OUTLOOK)			APPNAME="Microsoft Outlook for Mac";;
+		$INSTALLER_ONENOTE)			APPNAME="Microsoft OneNote for Mac";;
+		$INSTALLER_ONEDRIVE)		APPNAME="Microsoft OneDrive for Mac";;
+		$INSTALLER_SKYPEBUSINESS)	APPNAME="Microsoft Skype for Business for Mac";;
+		$INSTALLER_COMPANYPORTAL)	APPNAME="Microsoft Intune Company Portal for Mac";;
+		$INSTALLER_REMOTEDESKTOP)	APPNAME="Microsoft Remote Desktop v10 for Mac";;
+	esac
+	echo "$APPNAME"
+}
+
+# Performs a reverse look-up from ID to web folder path
+GetWebFolderFromID() {
+	case "$1" in
+		$INSTALLER_MAU)				FOLDER="$WEBFOLDER_MAU";;
+		$INSTALLER_OFFICE)			FOLDER="$WEBFOLDER_OFFICE";;
+		$INSTALLER_WORD)			FOLDER="$WEBFOLDER_WORD";;
+		$INSTALLER_EXCEL)			FOLDER="$WEBFOLDER_EXCEL";;
+		$INSTALLER_POWERPOINT)		FOLDER="$WEBFOLDER_POWERPOINT";;
+		$INSTALLER_OUTLOOK)			FOLDER="$WEBFOLDER_OUTLOOK";;
+		$INSTALLER_ONENOTE)			FOLDER="$WEBFOLDER_ONENOTE";;
+		$INSTALLER_ONEDRIVE)		FOLDER="$WEBFOLDER_ONEDRIVE";;
+		$INSTALLER_SKYPEBUSINESS)	FOLDER="$WEBFOLDER_SKYPEBUSINESS";;
+		$INSTALLER_COMPANYPORTAL)	FOLDER="$WEBFOLDER_COMPANYPORTAL";;
+		$INSTALLER_REMOTEDESKTOP)	FOLDER="$WEBFOLDER_REMOTEDESKTOP";;
+	esac
+	echo "$CACHEPATH/$FOLDER"
+}
+
+# Resolves an FWLink to absolute download URL
+ResolveFWLink() {
+	URL="$1"
+	local LOCATION=$(curl --head -s $URL | awk -v RS='\r' '/Location: / {print $2}')
+	if [ "$LOCATION" == "" ]; then
+		echo "$URL"
+	else
+		echo "$LOCATION"
+	fi
+}
+
+# Gets the size of a file based on its header, then strips non-numeric characters
+GetDownloadSize() {
+	URL="$1"
+	local CONTENTHTTPLENGTH=$(curl --head -s $URL | awk '/Content-Length/' | cut -d ' ' -f2)
+	CONTENTLENGTH=$(echo ${CONTENTHTTPLENGTH//[!0-9]/})
+	echo $CONTENTLENGTH
+}
+
+# Gets the size of a file from the local disk
+GetLocalSize() {
+	local FILENAME="$1"
+	local FOLDER="$2"
+	# The stat command works differently between macOS and other Linux platforms like RHEL
+	if [ "$PLATFORM" == "Darwin" ]; then
+		local FILELENGTH=($(cd "$FOLDER" && stat -f%z "$FILENAME" 2>/dev/null))
+	else
+		local FILELENGTH=($(cd "$FOLDER" && stat -c%s "$FILENAME" 2>/dev/null))
+	fi
+	echo $FILELENGTH
+}
+
+# Downloads the specified installer package
+DownloadPackage() {
+	local URL="$1"	
+	local APPLICATION="$2"
+	local SIZE="$3"
+	local FOLDER="$4"
+	local PACKAGE=$(basename "$1")
+	echo "================================================================================================="
+	echo Application: "$APPLICATION"
+	echo Package:     "$PACKAGE"
+	echo Size:        "$SIZE" MB
+	echo URL:         "$URL"
+	(cd "$FOLDER" && curl --progress-bar --remote-name --location $URL)
+}
+
+# Create a client URL redirector
+CreateRedirector() {
+	local FILE="$1"
+	local PKG="$2"
+	local FOLDER="$3"
+	if [ -f "$FOLDER/$FILE" ]; then
+		(cd "$FOLDER" && rm -f "$FILE")
+	fi
+	(cd "$FOLDER" && touch "$FILE")
+	echo "<!DOCTYPE HTML PUBLIC ""-//W3C//DTD HTML 4.0 Transitional//EN"">" >> "$FOLDER/$FILE"
+	echo "<html><head>" >> "$FOLDER/$FILE"
+	echo "<meta http-equiv=""REFRESH"" content=""0;url=./$PKG"">" >> "$FOLDER/$FILE"
+	echo "</head><body></body></html>" >> "$FOLDER/$FILE"
+}
+
+# Removes older versions of installer packages if they exist
+PurgeOldInstallers() {
+	local LATESTPKG="$1"
+	local FOLDER="$2"
+	for package in $FOLDER/*.pkg; do
+		local FILE=$(basename "$package")
+		if [ "$FILE" != "$LATESTPKG" ]; then
+			echo "Removing old installer $FILE"
+			rm "$FOLDER/$FILE"
+		fi
+	done
+}
+
+# Evaluate command-line arguments
+if [[ $# = 0 ]]; then
+	ShowUsage
+else
+	for KEY in "$@"
+	do
+	case $KEY in
+    	--Help|-h|--help)
+    	ShowUsage
+    	shift # past argument
+    	;;
+    	--CachePath:*|-c:*|--cachepath:*)
+    	CACHEPATH=${KEY#*:}
+    	shift # past argument
+    	;;
+    	--CheckInterval:*|-i:*|--checkinterval:*)
+    	CHECKINTERVAL=${KEY#*:}
+    	shift # past argument
+    	;;
+    	--PurgeOldInstallers|-p|--purgeoldinstallers)
+    	PURGEOLD=true
+    	shift # past argument
+    	;;
+    	*)
+    	ShowUsage
+    	;;
+	esac
+	shift # past argument or value
+	done
+fi
+
+## Main
+while :
+do
+	# Build an array of packages to download
+	BuildInstallerArray
+	# Build an array of each package location and download those packages
+	for a in "${APP[@]}"
+	do
+		# Get the friendly app name for display purposes
+		APPNAME=$(GetAppNameFromID "$a")
+		# Get the folder name on the local web server where the installer package should reside
+		WEBFOLDERPATH=$(GetWebFolderFromID "$a")
+		# Create the folder name on the local web server if it doesn't exist
+		if [ ! -d "$WEBFOLDERPATH" ]; then
+			mkdir -p "$WEBFOLDERPATH"
+		fi
+		# Resolve the FWLink to the actual download URL
+		PACKAGEURL=$(ResolveFWLink "$a")
+		# Get the installer filename
+		PACKAGENAME=$(basename "$PACKAGEURL")
+		# Get the size of the installer on the CDN
+		PACKAGESIZECDN=$(GetDownloadSize "$PACKAGEURL")
+		# Get the size of the installer on the local web server, if it exists
+		PACKAGESIZELOCAL=$(GetLocalSize "$PACKAGENAME" "$WEBFOLDERPATH")
+		# Convert the package size from bytes to megabytes
+		PACKAGESIZECDNMEG=$(expr $PACKAGESIZECDN / 1024 / 1024)
+		# Test whether we already have the installer downloaded
+		if [ -f "$WEBFOLDERPATH/$PACKAGENAME" ]; then
+			# Test whether the downloaded installer got interrupted when downloading
+			if [ "$PACKAGESIZELOCAL" == "$PACKAGESIZECDN" ]; then
+				# The installer is already downloaded and whole. We can stop here and move to the next package
+				echo "Package $PACKAGENAME already exists in the cache ...skipping"
+				continue
+			else
+				# The installer is present, but it's not whole, so lets remove it
+				echo "Package $PACKAGENAME exists in the cache but is corrupt ...removing"
+				(cd "$WEBFOLDERPATH" && rm -f "$PACKAGENAME")
+			fi
+		fi
+		# Download the installer package
+		DownloadPackage "$PACKAGEURL" "$APPNAME" "$PACKAGESIZECDNMEG" "$WEBFOLDERPATH"
+		# Create a default.html file in the web folder so that browser requests auto-navigate to the correct package
+		CreateRedirector "$WEBFOLDER_FILE" "$PACKAGENAME" "$WEBFOLDERPATH"
+		# Remove older installers if desired
+		if [ $PURGEOLD ]; then
+			PurgeOldInstallers "$PACKAGENAME" "$WEBFOLDERPATH"
+		fi
+	done
+	
+	# If CheckInterval wasn't specified on the command-line, just run once
+	if [ "$CHECKINTERVAL" == '' ]; then
+		exit 0
+	else
+	# Otherwise, sleep for the specified number of minutes before checking again
+		echo "Sleeping for $CHECKINTERVAL minutes..."
+		CHECKINTERVALSECS=$(expr $CHECKINTERVAL \* 60)
+		# Wait until the next check interval
+		sleep "$CHECKINTERVALSECS"
+	fi
+done
+
+exit 0
