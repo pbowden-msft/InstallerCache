@@ -2,7 +2,7 @@
 #set -x
 
 TOOL_NAME="Microsoft Office Installer Cache"
-TOOL_VERSION="1.0"
+TOOL_VERSION="1.1"
 
 ## Copyright (c) 2018 Microsoft Corp. All rights reserved.
 ## Scripts are not supported under any Microsoft standard support program or service. The scripts are provided AS IS without warranty of any kind.
@@ -22,6 +22,12 @@ WEBFOLDER_EXCEL="InstallExcel"
 WEBFOLDER_POWERPOINT="InstallPowerPoint"
 WEBFOLDER_OUTLOOK="InstallOutlook"
 WEBFOLDER_ONENOTE="InstallOneNote"
+WEBFOLDER_OFFICE2016="InstallOffice2016"
+WEBFOLDER_WORD2016="InstallWord2016"
+WEBFOLDER_EXCEL2016="InstallExcel2016"
+WEBFOLDER_POWERPOINT2016="InstallPowerPoint2016"
+WEBFOLDER_OUTLOOK2016="InstallOutlook2016"
+WEBFOLDER_ONENOTE2016="InstallOneNote2016"
 WEBFOLDER_ONEDRIVE="InstallOneDrive"
 WEBFOLDER_SKYPEBUSINESS="InstallSkypeBusiness"
 WEBFOLDER_COMPANYPORTAL="InstallCompanyPortal"
@@ -36,6 +42,14 @@ INSTALLER_EXCEL="https://go.microsoft.com/fwlink/?linkid=525135"
 INSTALLER_POWERPOINT="https://go.microsoft.com/fwlink/?linkid=525136"
 INSTALLER_OUTLOOK="https://go.microsoft.com/fwlink/?linkid=525137"
 INSTALLER_ONENOTE="https://go.microsoft.com/fwlink/?linkid=820886"
+
+INSTALLER_OFFICE2016="https://go.microsoft.com/fwlink/?linkid=871743"
+INSTALLER_WORD2016="https://go.microsoft.com/fwlink/?linkid=871748"
+INSTALLER_EXCEL2016="https://go.microsoft.com/fwlink/?linkid=871750"
+INSTALLER_POWERPOINT2016="https://go.microsoft.com/fwlink/?linkid=871751"
+INSTALLER_OUTLOOK2016="https://go.microsoft.com/fwlink/?linkid=871753"
+INSTALLER_ONENOTE2016="https://go.microsoft.com/fwlink/?linkid=871755"
+
 INSTALLER_ONEDRIVE="https://go.microsoft.com/fwlink/?linkid=823060"
 INSTALLER_SKYPEBUSINESS="https://go.microsoft.com/fwlink/?linkid=831677"
 INSTALLER_COMPANYPORTAL="https://go.microsoft.com/fwlink/?linkid=869655"
@@ -66,7 +80,13 @@ BuildInstallerArray() {
 	APP+=("$INSTALLER_POWERPOINT")
 	APP+=("$INSTALLER_OUTLOOK")
 	APP+=("$INSTALLER_ONENOTE")
-	APP+=("$INSTALLER_ONEDRIVE")
+	APP+=("$INSTALLER_ONEDRIVE")	
+	APP+=("$INSTALLER_OFFICE2016")
+	APP+=("$INSTALLER_WORD2016")
+	APP+=("$INSTALLER_EXCEL2016")
+	APP+=("$INSTALLER_POWERPOINT2016")
+	APP+=("$INSTALLER_OUTLOOK2016")
+	APP+=("$INSTALLER_ONENOTE2016")
 	APP+=("$INSTALLER_SKYPEBUSINESS")
 	APP+=("$INSTALLER_COMPANYPORTAL")
 	APP+=("$INSTALLER_REMOTEDESKTOP")
@@ -82,6 +102,12 @@ GetAppNameFromID() {
 		$INSTALLER_POWERPOINT)		APPNAME="Microsoft PowerPoint for Mac";;
 		$INSTALLER_OUTLOOK)			APPNAME="Microsoft Outlook for Mac";;
 		$INSTALLER_ONENOTE)			APPNAME="Microsoft OneNote for Mac";;
+		$INSTALLER_OFFICE2016)		APPNAME="Microsoft Office 2016 for Mac";;
+		$INSTALLER_WORD2016)		APPNAME="Microsoft Word 2016 for Mac";;
+		$INSTALLER_EXCEL2016)		APPNAME="Microsoft Excel 2016 for Mac";;
+		$INSTALLER_POWERPOINT2016)	APPNAME="Microsoft PowerPoint 2016 for Mac";;
+		$INSTALLER_OUTLOOK2016)		APPNAME="Microsoft Outlook 2016 for Mac";;
+		$INSTALLER_ONENOTE2016)		APPNAME="Microsoft OneNote 2016 for Mac";;
 		$INSTALLER_ONEDRIVE)		APPNAME="Microsoft OneDrive for Mac";;
 		$INSTALLER_SKYPEBUSINESS)	APPNAME="Microsoft Skype for Business for Mac";;
 		$INSTALLER_COMPANYPORTAL)	APPNAME="Microsoft Intune Company Portal for Mac";;
@@ -100,6 +126,12 @@ GetWebFolderFromID() {
 		$INSTALLER_POWERPOINT)		FOLDER="$WEBFOLDER_POWERPOINT";;
 		$INSTALLER_OUTLOOK)			FOLDER="$WEBFOLDER_OUTLOOK";;
 		$INSTALLER_ONENOTE)			FOLDER="$WEBFOLDER_ONENOTE";;
+		$INSTALLER_OFFICE2016)		FOLDER="$WEBFOLDER_OFFICE";;
+		$INSTALLER_WORD2016)		FOLDER="$WEBFOLDER_WORD";;
+		$INSTALLER_EXCEL2016)		FOLDER="$WEBFOLDER_EXCEL";;
+		$INSTALLER_POWERPOINT2016)	FOLDER="$WEBFOLDER_POWERPOINT";;
+		$INSTALLER_OUTLOOK2016)		FOLDER="$WEBFOLDER_OUTLOOK";;
+		$INSTALLER_ONENOTE2016)		FOLDER="$WEBFOLDER_ONENOTE";;
 		$INSTALLER_ONEDRIVE)		FOLDER="$WEBFOLDER_ONEDRIVE";;
 		$INSTALLER_SKYPEBUSINESS)	FOLDER="$WEBFOLDER_SKYPEBUSINESS";;
 		$INSTALLER_COMPANYPORTAL)	FOLDER="$WEBFOLDER_COMPANYPORTAL";;

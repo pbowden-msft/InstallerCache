@@ -15,6 +15,14 @@ Web install points created by the tool:</br>
  - /InstallPowerPoint
  - /InstallOutlook
  - /InstallOneNote
+ 
+ - /InstallOffice2016
+ - /InstallWord2016
+ - /InstallExcel2016
+ - /InstallPowerPoint2016
+ - /InstallOutlook2016
+ - /InstallOneNote2016
+ 
  - /InstallOneDrive
  - /InstallSkypeBusiness
  - /InstallCompanyPortal
